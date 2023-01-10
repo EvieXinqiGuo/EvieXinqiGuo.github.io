@@ -1,16 +1,14 @@
-title:              Clean Blog
-email:              your-email@example.com
-description:        A Blog Theme by Start Bootstrap
-author:             Start Bootstrap
-baseurl:            "/startbootstrap-clean-blog-jekyll"
-url:                "https://startbootstrap.github.io"
+title:              Evie Xinqi Guo
+email:              guoxinqieve@gmail.com
+description:        Evie is a 6th year psychology PhD candidate who is passionate about and experienced in research-driven approaches to improve people’s experience, and make real-world impact.  
+author:             Evie Xinqi Guo
+baseurl:            ""
+url:                "https://eviexinqiguo.github.io"
 
 # Social Profiles
-twitter_username:   SBootstrap
-github_username:    StartBootstrap
-facebook_username:  StartBootstrap
-instagram_username:  
-linkedin_username:
+twitter_username:   evie_guo
+github_username:    EvieXinqiGuo
+linkedin_username:  Xinqi (Evie) Guo
 
 # Add your google-analytics ID here to activate google analytics
 google_analytics:   UA-XXXXXXXXX-X # out your google-analytics code
