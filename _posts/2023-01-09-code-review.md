@@ -31,4 +31,4 @@ background: '/img/posts/pexels-sora-shimazaki-5926393.jpg'
 <blockquote class="blockquote">I advocate for more internal and external code-review. As I believe that scrutinizing and improving the code that drives analyses elevates the quality and reliability of research to new heights.</blockquote>
 
 
-</p>Image by the author</p>
+</p>Image in main text by the author. Background image by Sora Shimazaki</p>
