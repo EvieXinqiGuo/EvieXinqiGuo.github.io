@@ -17,7 +17,9 @@ background: '/img/posts/01.jpg'
 <p>Best practices: Code review can also help promote the use of best practices in coding, such as using appropriate data structures and algorithms, and following a consistent coding style.<p>
 
 
-<img class="img-fluid" src="https://oroinc.com/orocrm/wp-content/uploads/sites/8/2017/09/code-review-best-practices.png" alt="Demo Image">
+<img class="img-fluid" src="https://github.com/EvieXinqiGuo/eviexinqiguo.github.io/blob/master/img/posts/code-review.png?raw=true" alt="Demo Image">
+
+<img src="/workspaces/eviexinqiguo.github.io/_site/img/posts/code-review.png" alt="">
 <span class="caption text-muted">The emotional burden of potentially exposing buggy, poorly-written code to peers can be a barrier for researchers to adopt code review.</span>
 
 <h2 class="section-heading">My Role in the Code Review Process</h2>
@@ -27,3 +29,6 @@ background: '/img/posts/01.jpg'
 </p>The shared code was divided into sections that correspond to the statistical output and visualization in the manuscript. If the code reviewers spotted an error, they were instructed to take a note of the line and then write a short description that explains what the potential issues are. Minor coding errors that did not impact the manuscript results and were found and reported to the main authors. The short description of the errors was emailed to the main authors and the code updates were pushed through Github. When needed, the code reviewers also made efforts to improve the readability of the code by breaking up long lines of code and adding comments.</p>
 
 <blockquote class="blockquote">I advocate for more internal and external code-review. As I believe that scrutinizing and improving the code that drives analyses elevates the quality and reliability of research to new heights.</blockquote>
+
+
+</p>Image by the author</p>
