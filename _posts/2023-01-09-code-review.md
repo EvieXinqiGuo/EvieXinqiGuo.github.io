@@ -3,7 +3,7 @@ layout: post
 title: "Code Review for Research Collaboration"
 subtitle: "Code Review in R to Ensure Reproducibility and Accuracy of Statistical Analyses in Research"
 date: 2023-01-09 14:45:13 -0400
-background: 'https://github.com/EvieXinqiGuo/eviexinqiguo.github.io/blob/master/img/posts/pexels-sora-shimazaki-5926393.jpg?raw=true'
+background: '/img/posts/pexels-sora-shimazaki-5926393.jpg'
 ---
 
 <p>This post is a summary of the code review / cross-validation process of a monumental reserach project that involves a 140+ researchers from different fields of social science and thousands of lines to review. The project is published in a prestigous journal, and here is the <a href="https://psyarxiv.com/wdxsb/">preprint of the project</a>.<p>
