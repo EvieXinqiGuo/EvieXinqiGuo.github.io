@@ -1,3 +1,4 @@
+Delivery Duration Prediction
 ---
 layout: post
 title: "Food Delivery Duration Prediction"
@@ -6,13 +7,14 @@ date: 2021-02-04 14:45:13 -0400
 background: '/img/food-delivery/pexels-mike-jones-9461218.jpg'
 ---
 
+
 ================
 
 # Overview of the challenge
 
-![](https://ahseeit.com//king-include/uploads/2019/02/50775485_137073873988501_8263291442820303042_n-7723924764.jpg)
-
 # Food delivery companies connects consumers with their favorite resturants through machine-learning-backed service. Once the order arrives late, the convinence due to delivery now becomes frustration.
+
+![](https://ahseeit.com//king-include/uploads/2019/02/50775485_137073873988501_8263291442820303042_n-7723924764.jpg)
 
 # To ensure that the prediction of delivery time closely reflects the actual delivery time, information from the three sides involved - the store, the dashers’ capacity, and the consumer’s order - all needs to be taken into consideration.
 
@@ -124,11 +126,56 @@ siginificantly improve the model fit.
 
 \##Loading libraries required and reading the data into R
 
+``` r
+cat("\f")
+```
+
 
+
+``` r
+rm(list = ls())
+library(readr)
+library(knitr)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(corrplot)
+library(caret)
+library(gridExtra)
+library(scales)
+library(Rmisc)
+library(ggrepel)
+library(psych)
+library(xgboost)
+library(skimr)
+library(lme4)
+library(merTools)
+library(mice)
+library(lubridate)
+
+
+library(apa)
+devtools::install_github("crsh/citr")
+library(citr)
+library(papaja)
+library(MOTE)
+library(tidyverse)
+library(kableExtra)
+```
 
 Below, I am reading the csv’s as dataframes into R.
 
+``` r
+train_raw = read_csv("/Users/guoxinqieve/Applications/OneDrive - UC San Diego/DD_takeHomeExercise/historical_data.csv")
+test_raw = read_csv("/Users/guoxinqieve/Applications/OneDrive - UC San Diego/DD_takeHomeExercise/predict_data.csv")
+```
+
 \#Pre-processing - data exploration, recoding, and cleaning
+
+``` r
+# overview of the variables
+glimpse(train_raw)
+```
 
     ## Rows: 197,428
     ## Columns: 16
@@ -148,6 +195,10 @@ Below, I am reading the csv’s as dataframes into R.
     ## $ total_outstanding_orders                     <dbl> 21, 2, 0, 2, 9, 2, 9, 7, …
     ## $ estimated_order_place_duration               <dbl> 446, 446, 446, 446, 446, …
     ## $ estimated_store_to_consumer_driving_duration <dbl> 861, 690, 690, 289, 650, …
+
+``` r
+glimpse(test_raw)
+```
 
     ## Rows: 54,778
     ## Columns: 17
@@ -169,12 +220,36 @@ Below, I am reading the csv’s as dataframes into R.
     ## $ delivery_id                                  <dbl> 194096, 236895, 190868, 1…
     ## $ platform                                     <chr> "android", "other", "andr…
 
+``` r
+# recoding to make the variables type match the description
+# (some numeric columns should be categorical)
+train = train_raw %>%
+    mutate(market_id = as.character(market_id), store_id = as.character(store_id),
+        store_primary_category = as.character(store_primary_category),
+        order_protocol = as.character(order_protocol))
+
+test = test_raw %>%
+    mutate(market_id = as.character(market_id), store_id = as.character(store_id),
+        store_primary_category = as.character(store_primary_category),
+        order_protocol = as.character(order_protocol))
+```
+
+``` r
+summary(train$created_at)  # created_at No NAs, but has a weird minimal: '2014-10-19 05:24:15' this should be excluded
+```
+
     ##                       Min.                    1st Qu. 
     ## "2014-10-19 05:24:15.0000" "2015-01-29 02:32:42.0000" 
     ##                     Median                       Mean 
     ## "2015-02-05 03:29:09.5000" "2015-02-04 22:00:09.5379" 
     ##                    3rd Qu.                       Max. 
     ## "2015-02-12 01:39:18.5000" "2015-02-18 06:00:44.0000"
+
+``` r
+train$created_at[year(train$created_at) == 2014] = NA  # now the earliest created_at is in year 2015
+
+summary(train$actual_delivery_time)  # actual_delivery_time has 7 NAs, other than that looks normal
+```
 
     ##                       Min.                    1st Qu. 
     ## "2015-01-21 15:58:11.0000" "2015-01-29 03:22:29.0000" 
@@ -184,6 +259,11 @@ Below, I am reading the csv’s as dataframes into R.
     ## "2015-02-12 02:25:26.0000" "2015-02-19 22:45:31.0000" 
     ##                       NA's 
     ##                        "7"
+
+``` r
+# looking at the distribution of the type of cuisines
+table(train$store_primary_category)  # some categories are much more popular than the others.
+```
 
     ## 
     ##            afghan           african           alcohol alcohol-plus-food 
@@ -225,35 +305,103 @@ Below, I am reading the csv’s as dataframes into R.
     ##        vegetarian        vietnamese 
     ##               845              6095
 
+``` r
+# looking at the distribution of the means of how stores
+# accpet order
+table(train$order_protocol)  # order_protocol has a lot of NAs, ranges from 1 to 7, are distinct, some are much more popular than others
+```
+
     ## 
     ##     1     2     3     4     5     6     7 
     ## 54725 24052 53199 19354 44290   794    19
 
+``` r
+summary(train$order_protocol)
+```
+
     ##    Length     Class      Mode 
     ##    197428 character character
+
+``` r
+# looking at the number of items in total
+summary(train$total_items)  # ranges form 1 to more than 411, No NAs
+```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   2.000   3.000   3.196   4.000 411.000
 
+``` r
+hist(train$total_items)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-1.png" style="display: block; margin: auto;" />
+
+``` r
+# looking at the subtotal of the order
+summary(train$subtotal)  # the min is zero, the median is 2200, highest 27100
+```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##       0    1400    2200    2682    3395   27100
 
+``` r
+# looking at the # of unique items of the order
+summary(train$num_distinct_items)  # no NAs, ranges from 1 to 20
+```
+
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   1.000   2.000   2.671   3.000  20.000
 
+``` r
+hist(train$num_distinct_items)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-2.png" style="display: block; margin: auto;" />
+
+``` r
+# looking at the minimum item price
+summary(train$min_item_price)  # has negative numbers, like -86, need to exclude it. 
+```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   -86.0   299.0   595.0   686.2   949.0 14700.0
 
+``` r
+hist(train$min_item_price)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-3.png" style="display: block; margin: auto;" />
+
+``` r
+train$min_item_price[train$min_item_price < 0] = NA  # after the exclusion, the price for min-price is 0
+
+# looking at the maximum item price
+summary(train$max_item_price)  # min is 0
+```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##       0     800    1095    1160    1395   14700
 
+``` r
+hist(train$max_item_price)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-4.png" style="display: block; margin: auto;" />
+
+``` r
+## the min and maximum item price are not very
+## interpretable or informative. Further, many delivery's
+## minimum and maximum item price are overlapping, since
+## they just ordered one item. The essential info can be
+## captured by subtotal and # of items. They will be
+## removed from the models.
+
+
+
+# Looking at the supply side of the delivery capacity ---
+# on-shift dasher
+table(train$total_onshift_dashers)  # has a couple of negative values, will leave them as it is since the train data also has negative values.
+```
 
     ## 
     ##   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10   11 
@@ -279,7 +427,16 @@ Below, I am reading the csv’s as dataframes into R.
     ##  156  157  158  159  160  162  163  164  165  168  169  171 
     ##   35   29   19    1    9    1    1    1    1    1    1    1
 
+``` r
+hist(train$total_onshift_dashers)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-5.png" style="display: block; margin: auto;" />
+
+``` r
+# looking at busy dashers
+table(train$total_busy_dashers)  # has a couple of negative values, will leave them as it is since the train data also has negative values.
+```
 
     ## 
     ##   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10 
@@ -303,7 +460,18 @@ Below, I am reading the csv’s as dataframes into R.
     ##  139  140  141  142  143  144  145  146  147  148  149  150  152  153  154 
     ##   23    7   31   45   25    8   36   29    7   31    1    2    2    1    1
 
+``` r
+hist(train$total_busy_dashers)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-6.png" style="display: block; margin: auto;" />
+
+``` r
+# looking at the outstanding orders, which reduces the
+# capacity
+
+table(train$total_outstanding_orders)  # has a couple of negative values, will leave them as it is since the train data also has negative values.
+```
 
     ## 
     ##   -6   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9 
@@ -343,13 +511,20 @@ Below, I am reading the csv’s as dataframes into R.
     ##  270  272  273  274  276  277  278  283  285 
     ##   19   33    1   14   35    1   20    1    1
 
+``` r
+hist(train$total_outstanding_orders)
+```
+
 <img src="Figs/visualizing variable distribution and excluding obvious outliers-7.png" style="display: block; margin: auto;" />
 
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-    ##     0.0   251.0   251.0   308.6   446.0  2715.0
+``` r
+# looking at the estimated duration to for the resturant to
+# receive an order
+order_place_duration_summary = summary(train$estimated_order_place_duration)  # min is 0, max is 2715
 
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##     0.0   382.0   544.0   545.4   702.0  2088.0     526
+# looking at the estimated point-to-point delivery time
+store_to_consumer_summary = summary(train$estimated_store_to_consumer_driving_duration)  # has many NA values, min is 0, max is 2088
+```
 
 At this point of pre-processing, it becomes clear that variables like
 maximum and minimum item prices are neither meaningful nor necessary for
@@ -359,7 +534,48 @@ prediction.
 
 ## Based on the existing data, some useful new features like “Weekday or Weekend” and “Day or Night” can be created
 
+``` r
+train = train %>%
+  mutate(actual_duration_sec = as.numeric(actual_delivery_time -created_at)*60,
+         # the new variable captures the time that cannot be captured by the point-to-point and order-receive time
+         diff_actual_estimate_sec = actual_duration_sec - (estimated_store_to_consumer_driving_duration + estimated_order_place_duration),
+       
+          DayOrNight = case_when(
+           hour(train$created_at) >= 7 & hour(train$created_at) < 18 ~ "Day",
+           TRUE ~ "Night"),
+         
+         WeekdayOrWeekend = case_when(
+           weekdays(train$created_at) == "Friday" ~ "Weekend",
+           weekdays(train$created_at) == "Saturday" ~ "Weekend",
+           weekdays(train$created_at) == "Sunday" ~ "Weekend",
+           TRUE ~ "Weekday")
+    
+    )
+
+
+test = test %>%
+  mutate( DayOrNight = case_when(
+           hour(test$created_at) >= 7 & hour(test$created_at) < 18 ~ "Day",
+           TRUE ~ "Night"),
+         
+         WeekdayOrWeekend = case_when(
+           weekdays(test$created_at) == "Friday" ~ "Weekend",
+           weekdays(test$created_at) == "Saturday" ~ "Weekend",
+           weekdays(test$created_at) == "Sunday" ~ "Weekend",
+           TRUE ~ "Weekday")
+    
+    )
+```
+
 ### Since I decided to not include uninformative variables like maximum item price when predicting, I’ll only select relevant columns to be included in the cleaned train and raw dataset.
+
+``` r
+selected_data = as.data.frame(train[, c(1, 4:8, 12:16, 18:20)])
+
+
+selected_data_test = as.data.frame(test[, c(1, 3:7, 11:15, 18,
+    19, 16)])
+```
 
 ## Selecting metrics
 
@@ -377,11 +593,134 @@ potential new model.
 
 ### The mixed effect model outperforms the linear regression model in both RMSE and the reduced overall lateness (14.93% -\> 14.1%) and reduced significant-late (6.9% -\> 6.3%). The predicted values from the mixed effect model will be keep to compare with the next model.
 
-    ## 
-    ##         Early 5-10 Min Early more than 10 Min     Early within 5 Min 
-    ##             0.10490680             0.68174342             0.07250548 
-    ##          Late 5-10 Min       Late Over 10 Min      Late within 5 Min 
-    ##             0.02976974             0.06288377             0.04819079
+``` r
+set.seed(100)
+TrainingIndex <- createDataPartition(selected_data$diff_actual_estimate_sec[!is.na(selected_data$diff_actual_estimate_sec)],
+    p = 0.8, list = FALSE)
+TrainingSet <- selected_data[TrainingIndex, ]  # Training Set
+TestingSet <- selected_data[-TrainingIndex, ]  # Test Set
+
+# below is a linear regression model with store_id removed,
+# further, the primary store category of a store is also
+# removed since new categories were added to the testing
+# dataset the code below shows that there are new store
+# categories
+train_category = as.data.frame(table(selected_data$store_primary_category))$Var1
+test_category = as.data.frame(table(selected_data_test$store_primary_category))$Var1
+new_categoryInTesting = unique(train_category[!train_category %in%
+    test_category])  #belgian   chocolate lebanese 
+old_categoryOnlyInTraining = unique(test_category[!test_category %in%
+    train_category])  # non of them are new to the test dataset but old to the train dataset
+
+lm_model <- lm(diff_actual_estimate_sec ~ market_id + order_protocol +
+    total_items + subtotal + total_onshift_dashers + total_busy_dashers +
+    total_outstanding_orders + DayOrNight + WeekdayOrWeekend +
+    estimated_order_place_duration + estimated_store_to_consumer_driving_duration,
+    data = TrainingSet)
+
+
+#### rsme for lm model formula from
+#### https://stackoverflow.com/questions/43123462/how-to-obtain-rmse-out-of-lm-result
+RSS <- c(crossprod(lm_model$residuals))
+MSE <- RSS/length(lm_model$residuals)  # faster than mean()
+RMSE <- sqrt(MSE)  ##  1026.231
+
+predicted_lm <- predict(lm_model, newdata = TestingSet)
+
+
+lm_error = TestingSet$diff_actual_estimate_sec - (predicted_lm +
+    TestingSet$estimated_order_place_duration + TestingSet$estimated_store_to_consumer_driving_duration)
+ErrorEvaluation_lm = data.frame(lm_error = lm_error, EarlyLateCategory = case_when(lm_error >
+    10 * 60 ~ "Late Over 10 Min", lm_error <= 10 * 60 & lm_error >
+    5 * 60 ~ "Late 5-10 Min", lm_error <= 5 * 60 & lm_error >
+    0 ~ "Late within 5 Min", lm_error <= 0 & lm_error > -5 *
+    60 ~ "Early within 5 Min", lm_error <= -5 * 60 & lm_error >
+    -10 * 60 ~ "Early 5-10 Min", lm_error <= -10 * 60 ~ "Early more than 10 Min"))
+## looking at the distribution of the early and late
+## category, there are currently
+
+ErrorEvaluation_lm_EarlyLateCategory = as.data.frame(prop.table(table(ErrorEvaluation_lm$EarlyLateCategory)))
+
+colnames(ErrorEvaluation_lm_EarlyLateCategory) = c("Early Late Category",
+    "Frequency")
+
+level_category <- c("Early more than 10 Min", "Early 5-10 Min",
+    "Early within 5 Min", "Late within 5 Min", "Late 5-10 Min",
+    "Late Over 10 Min")
+
+ErrorEvaluation_lm_EarlyLateCategory = ErrorEvaluation_lm_EarlyLateCategory %>%
+    mutate(`Early Late Category` = factor(`Early Late Category`,
+        levels = level_category)) %>%
+    arrange(`Early Late Category`)
+
+table_ErrorEvaluation_lm_EarlyLateCategory = ErrorEvaluation_lm_EarlyLateCategory %>%
+    knitr::kable(digits = 3, caption = "Error Evaluation Linear Regression Model Early Late Category") %>%
+    kableExtra::kable_styling(latex_options = "scale_down")
+
+
+# the simple linear model also does well in having an
+# overall lateness of 14.93%. But its very late category
+# (6.9%) is higher than the mixed effect model prediction
+# (below)
+
+TrainingSet$market_id[is.na(TrainingSet$market_id) == T] = "NA"
+TrainingSet$order_protocol[is.na(TrainingSet$order_protocol) ==
+    T] = "NA"
+lmer_model <- lmer(diff_actual_estimate_sec ~ market_id + order_protocol +
+    total_items + subtotal + total_onshift_dashers + total_busy_dashers +
+    total_outstanding_orders + estimated_order_place_duration +
+    estimated_store_to_consumer_driving_duration + DayOrNight +
+    WeekdayOrWeekend + (1 | store_id), data = TrainingSet)
+
+lmer_rmse = RMSE.merMod(lmer_model)  #  958.1015
+
+TestingSet$market_id[is.na(TestingSet$market_id) == T] = "NA"
+TestingSet$order_protocol[is.na(TestingSet$order_protocol) ==
+    T] = "NA"
+
+newdata = TestingSet %>%
+    dplyr::select(diff_actual_estimate_sec, market_id, order_protocol,
+        total_items, subtotal, total_onshift_dashers, total_busy_dashers,
+        total_outstanding_orders, estimated_order_place_duration,
+        estimated_store_to_consumer_driving_duration, DayOrNight,
+        WeekdayOrWeekend, store_id)
+
+predicted_lmer <- predict(lmer_model, newdata = newdata, allow.new.levels = TRUE)
+
+lmer_error = TestingSet$diff_actual_estimate_sec - (predicted_lmer +
+    TestingSet$estimated_order_place_duration + TestingSet$estimated_store_to_consumer_driving_duration)
+ErrorEvaluation_lmer = data.frame(lmer_error = lmer_error, EarlyLateCategory = case_when(lmer_error >
+    10 * 60 ~ "Late Over 10 Min", lmer_error <= 10 * 60 & lmer_error >
+    5 * 60 ~ "Late 5-10 Min", lmer_error <= 5 * 60 & lmer_error >
+    0 ~ "Late within 5 Min", lmer_error <= 0 & lmer_error > -5 *
+    60 ~ "Early within 5 Min", lmer_error <= -5 * 60 & lmer_error >
+    -10 * 60 ~ "Early 5-10 Min", lmer_error <= -10 * 60 ~ "Early more than 10 Min"))
+lmer_summary = prop.table(table(ErrorEvaluation_lmer$EarlyLateCategory))
+
+# The vast majority of the delivery is early under this
+# model, the overall lateness is 14.1%. The the very (over
+# 10 min) late category is around 6.3% percent
+
+
+ErrorEvaluation_lmixed_EarlyLateCategory = as.data.frame(prop.table(table(ErrorEvaluation_lmer$EarlyLateCategory)))
+
+colnames(ErrorEvaluation_lmixed_EarlyLateCategory) = c("Early Late Category",
+    "Frequency")
+
+level_category <- c("Early more than 10 Min", "Early 5-10 Min",
+    "Early within 5 Min", "Late within 5 Min", "Late 5-10 Min",
+    "Late Over 10 Min")
+
+
+ErrorEvaluation_lmixed_EarlyLateCategory = ErrorEvaluation_lmixed_EarlyLateCategory %>%
+    mutate(`Early Late Category` = factor(`Early Late Category`,
+        levels = level_category)) %>%
+    arrange(`Early Late Category`)
+
+table_ErrorEvaluation_lmixed_EarlyLateCategory = ErrorEvaluation_lmixed_EarlyLateCategory %>%
+    knitr::kable(digits = 3, caption = "Error Evaluation Linear MIXED Model Early Late Category") %>%
+    kableExtra::kable_styling(latex_options = "scale_down")
+```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
 <caption>
@@ -519,11 +858,107 @@ Late Over 10 Min
 First, I used one-hot encoding to ensure that training is a numeric
 metric before the XGBoost modeling.
 
+``` r
+# one_hot_encoding
+
+TrainingSet = TrainingSet %>%
+    filter(market_id != "NA")
+
+TrainingSet = TrainingSet %>%
+    filter(order_protocol != "NA")
+
+dummy <- dummyVars(" ~ .", data = as.data.frame(TrainingSet[,
+    c(1, 4, 13, 14)]))
+
+newdata <- data.frame(predict(dummy, newdata = as.data.frame(TrainingSet[,
+    c(1, 4, 13, 14)])))
+
+newdata[is.na(newdata)] = 0
+
+
+
+# imputing the missing values for the xgboost
+RestOfOneHotEncoded = as.data.frame(TrainingSet[, -c(1:4, 13,
+    14)])
+RestOfOneHotEncoded$diff_actual_estimate_sec[is.na(RestOfOneHotEncoded$diff_actual_estimate_sec)] <- median(RestOfOneHotEncoded$diff_actual_estimate_sec,
+    na.rm = TRUE)
+RestOfOneHotEncoded$estimated_store_to_consumer_driving_duration[is.na(RestOfOneHotEncoded$estimated_store_to_consumer_driving_duration)] <- median(RestOfOneHotEncoded$estimated_store_to_consumer_driving_duration,
+    na.rm = TRUE)
+RestOfOneHotEncoded$total_outstanding_orders[is.na(RestOfOneHotEncoded$total_outstanding_orders)] <- median(RestOfOneHotEncoded$total_outstanding_orders,
+    na.rm = TRUE)
+RestOfOneHotEncoded$total_onshift_dashers[is.na(RestOfOneHotEncoded$total_onshift_dashers)] <- median(RestOfOneHotEncoded$total_onshift_dashers,
+    na.rm = TRUE)
+RestOfOneHotEncoded$total_busy_dashers[is.na(RestOfOneHotEncoded$total_busy_dashers)] <- median(RestOfOneHotEncoded$total_busy_dashers,
+    na.rm = TRUE)
+
+OneHotEncoded = cbind(newdata, RestOfOneHotEncoded)
+```
+
+``` r
+TestingSet = TestingSet %>%
+    filter(market_id != "NA")
+
+TestingSet = TestingSet %>%
+    filter(order_protocol != "NA")
+
+# one_hot_encoding
+dummy_test <- dummyVars(" ~ .", data = as.data.frame(TestingSet[,
+    c(1, 4, 13, 14)]))
+
+newdata_test <- data.frame(predict(dummy_test, newdata = as.data.frame(TestingSet[,
+    c(1, 4, 13, 14)])))
+newdata_test[is.na(newdata_test)] = 0
+
+# imputing the missing values for the xgboost
+RestOfOneHotEncoded_test = as.data.frame(TestingSet[, -c(1:4,
+    13, 14)])
+RestOfOneHotEncoded_test$estimated_store_to_consumer_driving_duration[is.na(RestOfOneHotEncoded_test$estimated_store_to_consumer_driving_duration)] <- median(RestOfOneHotEncoded_test$estimated_store_to_consumer_driving_duration,
+    na.rm = TRUE)
+RestOfOneHotEncoded_test$total_outstanding_orders[is.na(RestOfOneHotEncoded_test$total_outstanding_orders)] <- median(RestOfOneHotEncoded_test$total_outstanding_orders,
+    na.rm = TRUE)
+RestOfOneHotEncoded_test$total_onshift_dashers[is.na(RestOfOneHotEncoded_test$total_onshift_dashers)] <- median(RestOfOneHotEncoded_test$total_onshift_dashers,
+    na.rm = TRUE)
+RestOfOneHotEncoded_test$total_busy_dashers[is.na(RestOfOneHotEncoded_test$total_busy_dashers)] <- median(RestOfOneHotEncoded_test$total_busy_dashers,
+    na.rm = TRUE)
+
+OneHotEncoded_test = cbind(newdata_test, RestOfOneHotEncoded_test)
+```
+
+``` r
+# put our testing & training data into two seperates
+# Dmatrixs objects
+dtrain <- xgb.DMatrix(data = as.matrix(OneHotEncoded[, colnames(OneHotEncoded) !=
+    "diff_actual_estimate_sec"]), label = OneHotEncoded$diff_actual_estimate_sec)
+dtest <- xgb.DMatrix(data = as.matrix(OneHotEncoded_test[, colnames(OneHotEncoded_test) !=
+    "diff_actual_estimate_sec"]))
+```
+
 In addition, I am taking over the best tuned values from the caret cross
 validation.
 
+``` r
+#### parameters inspired by https://www.kaggle.com/erikbruin/house-prices-lasso-xgboost-and-a-detailed-eda/report
+default_param<-list(
+        objective = "reg:squarederror",
+        booster = "gbtree",
+        eta=0.03,
+        gamma=0,
+        max_depth=3, #default=6
+        min_child_weight=1, #default=1
+        subsample=1,
+        colsample_bytree=1
+)
+```
+
 The next step is cross validate to determine the best number of rounds
 (for the given set of parameters).
+
+``` r
+set.seed(100)
+xgbcv <- xgb.cv(params = default_param, data = dtrain, nrounds = 500,
+    nfold = 7, showsd = T, stratified = T, print_every_n = 50,
+    early_stopping_rounds = 10, maximize = F)
+```
 
     ## [1]  train-rmse:2581.498929+82.965879    test-rmse:2542.178573+456.683671 
     ## Multiple eval metrics are present. Will use test_rmse for early stopping.
@@ -539,7 +974,32 @@ The next step is cross validate to determine the best number of rounds
     ## Stopping. Best iteration:
     ## [373]    train-rmse:1531.970765+120.833297   test-rmse:1481.976564+687.507665
 
-    ## [1] 2057.656 2127.098 2456.185 2759.486 1732.949 2050.294
+``` r
+# [1]\ttrain-rmse:2248.431566+4.564152\ttest-rmse:2248.275217+27.603266
+# Multiple eval metrics are present. Will use test_rmse for
+# early stopping.  Will train until test_rmse hasn't
+# improved in 10 rounds.
+# [51]\ttrain-rmse:1155.453953+6.996119\ttest-rmse:1155.530700+44.531763
+# [101]\ttrain-rmse:1058.757189+7.407113\ttest-rmse:1059.669081+46.052753
+# [151]\ttrain-rmse:1040.796808+7.226292\ttest-rmse:1042.572885+46.117138
+# [201]\ttrain-rmse:1029.334863+7.374779\ttest-rmse:1031.947599+45.965339
+# [251]\ttrain-rmse:1020.872993+7.404225\ttest-rmse:1024.585417+45.954483
+# [301]\ttrain-rmse:1014.524255+7.407507\ttest-rmse:1019.136701+46.050757
+# [351]\ttrain-rmse:1009.616736+7.337194\ttest-rmse:1015.069901+46.052787
+# [401]\ttrain-rmse:1005.703525+7.237976\ttest-rmse:1012.005312+46.090358
+# [451]\ttrain-rmse:1002.528861+7.204019\ttest-rmse:1009.440472+46.026105
+# [500]\ttrain-rmse:1000.040400+7.151973\ttest-rmse:1007.622563+46.082395
+```
+
+``` r
+# train the model using the best iteration found by cross
+# validation
+xgb_mod <- xgb.train(data = dtrain, params = default_param, nrounds = 442)
+```
+
+``` r
+XGBpred <- predict(xgb_mod, dtest)
+```
 
 After obtaining the RMSE score, I use the pre-constructed early/late
 category to evaluate the XGBoost model. As presented below, the result
@@ -548,11 +1008,56 @@ which is less evil than underestimating the delivery time. However, its
 percentage of being very (over 10 min) early ranks between the linear
 regression and the linear mixed effect model.
 
+``` r
+xgboost_error = TestingSet$diff_actual_estimate_sec - (round(XGBpred) +
+    TestingSet$estimated_order_place_duration + TestingSet$estimated_store_to_consumer_driving_duration)
+xgboostErrorEvaluation = data.frame(xgboost_error = xgboost_error,
+    EarlyLateCategory = case_when(xgboost_error > 10 * 60 ~ "Late Over 10 Min",
+        xgboost_error <= 10 * 60 & xgboost_error > 5 * 60 ~ "Late 5-10 Min",
+        xgboost_error <= 5 * 60 & xgboost_error > 0 ~ "Late within 5 Min",
+        xgboost_error <= 0 & xgboost_error > -5 * 60 ~ "Early within 5 Min",
+        xgboost_error <= -5 * 60 & xgboost_error > -10 * 60 ~
+            "Early 5-10 Min", xgboost_error <= -10 * 60 ~ "Early more than 10 Min"))
+## looking at the distribution of the early and late
+## category, there are currently
+prop.table(table(xgboostErrorEvaluation$EarlyLateCategory))
+```
+
     ## 
     ##         Early 5-10 Min Early more than 10 Min     Early within 5 Min 
     ##             0.09872233             0.68068311             0.07235927 
     ##          Late 5-10 Min       Late Over 10 Min      Late within 5 Min 
     ##             0.03208096             0.06783049             0.04832385
+
+``` r
+# this result indicates the XGBoost model has significantly
+# lower RMSE, but higher 'late over 10 min' percentage. The
+# overall lateness of the XGBoost (14.9%) is similar with
+# the rest of the two models
+
+# Early 5-10 Min Early more than 10 Min 0.10099015
+# 0.68001216 Early within 5 Min Late 5-10 Min 0.07202006
+# 0.03327509 Late Over 10 Min Late within 5 Min 0.06738585
+# 0.04631670
+
+ErrorEvaluation_xgboost_EarlyLateCategory = as.data.frame(prop.table(table(xgboostErrorEvaluation$EarlyLateCategory)))
+
+colnames(ErrorEvaluation_xgboost_EarlyLateCategory) = c("Early Late Category",
+    "Frequency")
+
+level_category <- c("Early more than 10 Min", "Early 5-10 Min",
+    "Early within 5 Min", "Late within 5 Min", "Late 5-10 Min",
+    "Late Over 10 Min")
+
+ErrorEvaluation_xgboost_EarlyLateCategory = ErrorEvaluation_xgboost_EarlyLateCategory %>%
+    mutate(`Early Late Category` = factor(`Early Late Category`,
+        levels = level_category)) %>%
+    arrange(`Early Late Category`)
+
+table_ErrorEvaluation_xgboost_EarlyLateCategory = ErrorEvaluation_xgboost_EarlyLateCategory %>%
+    knitr::kable(digits = 3, caption = "Error Evaluation XGBoost Model Early Late Category") %>%
+    kableExtra::kable_styling(latex_options = "scale_down")
+```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
 <caption>
@@ -622,12 +1127,42 @@ Late Over 10 Min
 
 ## By evaluating the RMSE and lateness category of the XGBoost model, I found out that the XGBoost’s RMSE score is much better than the linear regression and mixed effect models. However, the mixed effect model has lower “very late” delivery than the XGBoost model. Thus, in the submission, I average the XGBoost and the mixed effect model prediction, with a heavier weight given to the XGBoost model.
 
-    ## [1] 2358.568 2141.555 1899.566 2151.156 2219.814 2514.201
+``` r
+# one_hot_encoding for submission data
+dummy_submit <- dummyVars(" ~ .", data = as.data.frame(test[,
+    c(1, 5, 18, 19)]))  # the platform feature is new. I omit it since it's absent in the training data
 
-    ##   delivery_id predicted.duration
-    ## 1      194096           2374.132
-    ## 2      236895           2184.798
-    ## 3      190868           1843.356
-    ## 4      183076           2032.118
-    ## 5      186200           2237.229
-    ## 6       86219           2562.308
+newdata_submit <- data.frame(predict(dummy_submit, newdata = as.data.frame(test[,
+    c(1, 5, 18, 19)])))
+newdata_submit[is.na(newdata_submit)] = 0
+
+# imputing the missing values for the xgboost
+RestOfOneHotEncoded_submit = as.data.frame(test[, -c(1:5, 8:10,
+    16:19)])
+RestOfOneHotEncoded_submit$estimated_store_to_consumer_driving_duration[is.na(RestOfOneHotEncoded_submit$estimated_store_to_consumer_driving_duration)] <- median(RestOfOneHotEncoded_submit$estimated_store_to_consumer_driving_duration,
+    na.rm = TRUE)
+RestOfOneHotEncoded_submit$total_outstanding_orders[is.na(RestOfOneHotEncoded_submit$total_outstanding_orders)] <- median(RestOfOneHotEncoded_submit$total_outstanding_orders,
+    na.rm = TRUE)
+RestOfOneHotEncoded_submit$total_onshift_dashers[is.na(RestOfOneHotEncoded_submit$total_onshift_dashers)] <- median(RestOfOneHotEncoded_submit$total_onshift_dashers,
+    na.rm = TRUE)
+RestOfOneHotEncoded_submit$total_busy_dashers[is.na(RestOfOneHotEncoded_submit$total_busy_dashers)] <- median(RestOfOneHotEncoded_submit$total_busy_dashers,
+    na.rm = TRUE)
+
+OneHotEncoded_submit = cbind(newdata_submit, RestOfOneHotEncoded_submit)
+
+dsubmit <- xgb.DMatrix(data = as.matrix(OneHotEncoded_submit))
+
+XGB_pred_submmit <- predict(xgb_mod, dsubmit)
+
+
+
+test$market_id[is.na(test$market_id) == T] = "NA"
+test$order_protocol[is.na(test$order_protocol) == T] = "NA"
+
+sub_avg <- data.frame(delivery_id = test$delivery_id, `predicted duration` = (2 *
+    XGB_pred_submmit + predict(lmer_model, newdata = test, allow.new.levels = TRUE))/3)
+
+
+write.csv(sub_avg, "final_output.csv",
+    row.names = F)
+```
