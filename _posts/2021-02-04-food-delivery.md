@@ -1,4 +1,3 @@
-Delivery Duration Prediction
 ---
 layout: post
 title: "Food Delivery Duration Prediction"
@@ -12,13 +11,13 @@ background: '/img/food-delivery/pexels-mike-jones-9461218.jpg'
 
 # Overview of the challenge
 
-# Food delivery companies connects consumers with their favorite resturants through machine-learning-backed service. Once the order arrives late, the convinence due to delivery now becomes frustration.
+## Food delivery companies connects consumers with their favorite resturants through machine-learning-backed service. Once the order arrives late, the convinence due to delivery now becomes frustration.
 
 ![](https://ahseeit.com//king-include/uploads/2019/02/50775485_137073873988501_8263291442820303042_n-7723924764.jpg)
 
-# To ensure that the prediction of delivery time closely reflects the actual delivery time, information from the three sides involved - the store, the dashers’ capacity, and the consumer’s order - all needs to be taken into consideration.
+## To ensure that the prediction of delivery time closely reflects the actual delivery time, information from the three sides involved - the store, the dashers’ capacity, and the consumer’s order - all needs to be taken into consideration.
 
-# Conceptually, the estimated delivery duration after the customer placing an order can be divided into these components (it’s not necessarily a chain of events since some can be done in paralell):
+## Conceptually, the estimated delivery duration after the customer placing an order can be divided into these components (it’s not necessarily a chain of events since some can be done in paralell):
 
 - The time that a store takes to receive an order from DoorDash
 - The time for a store to repare for an order
@@ -587,11 +586,11 @@ Further, the penalization of being late, even within 5 minutes, should
 be more than the being early when comparing the existing and the
 potential new model.
 
-## The first model is a linear regression model with all the variables left after feature engineering as predictors. The second model is a linear mixed effect model with store_id as a random effect (since we are not intestered in the clustering effect introduced by each specific stores).
+- The first model is a linear regression model with all the variables left after feature engineering as predictors. The second model is a linear mixed effect model with store_id as a random effect (since we are not intestered in the clustering effect introduced by each specific stores).
 
-### The linear regression model and the mixed effect model outcomes were compared based on their Root Mean Square Error (RMSE) and their percentage of underestimating the delivery time (being late is bad).
+- The linear regression model and the mixed effect model outcomes were compared based on their Root Mean Square Error (RMSE) and their percentage of underestimating the delivery time (being late is bad).
 
-### The mixed effect model outperforms the linear regression model in both RMSE and the reduced overall lateness (14.93% -\> 14.1%) and reduced significant-late (6.9% -\> 6.3%). The predicted values from the mixed effect model will be keep to compare with the next model.
+- The mixed effect model outperforms the linear regression model in both RMSE and the reduced overall lateness (14.93% -\> 14.1%) and reduced significant-late (6.9% -\> 6.3%). The predicted values from the mixed effect model will be keep to compare with the next model.
 
 ``` r
 set.seed(100)
@@ -853,7 +852,7 @@ Late Over 10 Min
 </tbody>
 </table>
 
-## The third prediction model for consideration is a XGBoost model
+- The third prediction model for consideration is a XGBoost model
 
 First, I used one-hot encoding to ensure that training is a numeric
 metric before the XGBoost modeling.
@@ -1125,7 +1124,7 @@ Late Over 10 Min
 </tbody>
 </table>
 
-## By evaluating the RMSE and lateness category of the XGBoost model, I found out that the XGBoost’s RMSE score is much better than the linear regression and mixed effect models. However, the mixed effect model has lower “very late” delivery than the XGBoost model. Thus, in the submission, I average the XGBoost and the mixed effect model prediction, with a heavier weight given to the XGBoost model.
+- By evaluating the RMSE and lateness category of the XGBoost model, I found out that the XGBoost’s RMSE score is much better than the linear regression and mixed effect models. However, the mixed effect model has lower “very late” delivery than the XGBoost model. Thus, in the submission, I average the XGBoost and the mixed effect model prediction, with a heavier weight given to the XGBoost model.
 
 ``` r
 # one_hot_encoding for submission data
