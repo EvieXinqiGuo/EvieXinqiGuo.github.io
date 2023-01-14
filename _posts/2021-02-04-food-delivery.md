@@ -329,11 +329,8 @@ summary(train$total_items)  # ranges form 1 to more than 411, No NAs
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   2.000   3.000   3.196   4.000 411.000
 
-``` r
-hist(train$total_items)
-```
-
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-1.png" style="display: block; margin: auto;" />
+ 
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-1.png" style="display: block; margin: auto;" />
 
 ``` r
 # looking at the subtotal of the order
@@ -351,11 +348,8 @@ summary(train$num_distinct_items)  # no NAs, ranges from 1 to 20
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   1.000   2.000   2.671   3.000  20.000
 
-``` r
-hist(train$num_distinct_items)
-```
 
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-2.png" style="display: block; margin: auto;" />
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-2.png" style="display: block; margin: auto;" />
 
 ``` r
 # looking at the minimum item price
@@ -365,11 +359,8 @@ summary(train$min_item_price)  # has negative numbers, like -86, need to exclude
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   -86.0   299.0   595.0   686.2   949.0 14700.0
 
-``` r
-hist(train$min_item_price)
-```
-
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-3.png" style="display: block; margin: auto;" />
+ 
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-3.png" style="display: block; margin: auto;" />
 
 ``` r
 train$min_item_price[train$min_item_price < 0] = NA  # after the exclusion, the price for min-price is 0
@@ -381,11 +372,8 @@ summary(train$max_item_price)  # min is 0
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##       0     800    1095    1160    1395   14700
 
-``` r
-hist(train$max_item_price)
-```
-
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-4.png" style="display: block; margin: auto;" />
+ 
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-4.png" style="display: block; margin: auto;" />
 
 ``` r
 ## the min and maximum item price are not very
@@ -426,11 +414,8 @@ table(train$total_onshift_dashers)  # has a couple of negative values, will leav
     ##  156  157  158  159  160  162  163  164  165  168  169  171 
     ##   35   29   19    1    9    1    1    1    1    1    1    1
 
-``` r
-hist(train$total_onshift_dashers)
-```
-
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-5.png" style="display: block; margin: auto;" />
+ 
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-5.png" style="display: block; margin: auto;" />
 
 ``` r
 # looking at busy dashers
@@ -459,11 +444,9 @@ table(train$total_busy_dashers)  # has a couple of negative values, will leave t
     ##  139  140  141  142  143  144  145  146  147  148  149  150  152  153  154 
     ##   23    7   31   45   25    8   36   29    7   31    1    2    2    1    1
 
-``` r
-hist(train$total_busy_dashers)
-```
+ 
 
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-6.png" style="display: block; margin: auto;" />
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-6.png" style="display: block; margin: auto;" />
 
 ``` r
 # looking at the outstanding orders, which reduces the
@@ -510,11 +493,8 @@ table(train$total_outstanding_orders)  # has a couple of negative values, will l
     ##  270  272  273  274  276  277  278  283  285 
     ##   19   33    1   14   35    1   20    1    1
 
-``` r
-hist(train$total_outstanding_orders)
-```
-
-<img src="Figs/visualizing variable distribution and excluding obvious outliers-7.png" style="display: block; margin: auto;" />
+ 
+<img src="/img/food-delivery/visualizing variable distribution and excluding obvious outliers-7.png" style="display: block; margin: auto;" />
 
 ``` r
 # looking at the estimated duration to for the resturant to
@@ -531,7 +511,7 @@ predicting delivery time. The subtotal and number of items can capture
 information about the food ordered that is relevant to the time
 prediction.
 
-## Based on the existing data, some useful new features like “Weekday or Weekend” and “Day or Night” can be created
+- Based on the existing data, some useful new features like “Weekday or Weekend” and “Day or Night” can be created
 
 ``` r
 train = train %>%
@@ -566,7 +546,7 @@ test = test %>%
     )
 ```
 
-### Since I decided to not include uninformative variables like maximum item price when predicting, I’ll only select relevant columns to be included in the cleaned train and raw dataset.
+- Since I decided to not include uninformative variables like maximum item price when predicting, I’ll only select relevant columns to be included in the cleaned train and raw dataset.
 
 ``` r
 selected_data = as.data.frame(train[, c(1, 4:8, 12:16, 18:20)])
