@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Code Review for Research Collaboration"
+title: "Code Review for Social Science Forecasting Collaborative"
 subtitle: "Code Review in R to Ensure Reproducibility and Accuracy of Statistical Analyses in Research"
 date: 2023-01-09 14:45:13 -0400
 background: '/img/posts/pexels-sora-shimazaki-5926393.jpg'
